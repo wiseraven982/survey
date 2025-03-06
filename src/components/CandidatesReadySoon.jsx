@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField, // Добавляем TextField для ввода сообщения
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CandidateAdditionalInfo from './CandidateAdditionalInfo';
@@ -22,6 +23,8 @@ const CandidatesReadySoon = ({ filteredPeople, incassatorsData, employeeScores, 
   const [selectedCandidates, setSelectedCandidates] = useState([]); // Состояние для выбранных кандидатов
   const [videoPresentations, setVideoPresentations] = useState({}); // Состояние для статусов видеопрезентаций
   const [openConfirmation, setOpenConfirmation] = useState(false); // Состояние для модального окна подтверждения
+  const [openMessageConfirmation, setOpenMessageConfirmation] = useState(false); // Для подтверждения отправки сообщения
+  const [messageText, setMessageText] = useState(''); // Текст сообщения
 
   // Обработчик для открытия/закрытия аккордеона
   const handleChange = (panel) => (event, isExpanded) => {
@@ -121,6 +124,43 @@ const CandidatesReadySoon = ({ filteredPeople, incassatorsData, employeeScores, 
     setOpenConfirmation(false); // Закрываем модальное окно без отправки
   };
 
+  // Обработчик для отправки сообщений
+  const handleSendMessage = () => {
+    setOpenMessageConfirmation(true);
+  };
+
+  // Обработчик подтверждения отправки сообщений
+  const handleConfirmMessageSend = () => {
+    selectedCandidates.forEach((userId) => sendMessageToUser(userId, messageText));
+    setSelectedCandidates([]);
+    setMessageText('');
+    setOpenMessageConfirmation(false);
+  };
+
+  // Обработчик отмены отправки сообщений
+  const handleCancelMessageSend = () => {
+    setOpenMessageConfirmation(false);
+  };
+
+  // Функция для отправки сообщения через Telegram
+  const sendMessageToUser = async (candidateId, message) => {
+    try {
+        const response = await fetch('http://195.133.38.138:5005/api/send-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidateId, message }),
+        });
+
+        if (response.ok) {
+            console.log(`✅ Сообщение отправлено пользователю с ID: ${candidateId}`);
+        } else {
+            console.error(`🔴 Ошибка при отправке сообщения пользователю с ID: ${candidateId}`);
+        }
+    } catch (error) {
+        console.error(`🔴 Ошибка при отправке сообщения пользователю с ID: ${candidateId}:`, error);
+    }
+  };
+
   // Фильтрация кандидатов по статусу видеопрезентации
   const filteredCandidates = showVideoPresentations
     ? filteredPeople.filter((person) => videoPresentations[person.user_id]?.status !== "Запрос не отправлен")
@@ -146,19 +186,42 @@ const CandidatesReadySoon = ({ filteredPeople, incassatorsData, employeeScores, 
         🔜 Ready Soon
       </Typography>
 
-      {/* Кнопка для запроса видеопрезентации */}
+      {/* Кнопка для запроса видеопрезентации и отправки сообщения */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <Button
           variant="contained"
           color="secondary"
           disabled={selectedCandidates.length === 0}
-          onClick={handleSendVideoRequests} // Используем новый обработчик
+          onClick={handleSendVideoRequests}
         >
           🎥 Запросить видеопрезентацию
         </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          disabled={selectedCandidates.length === 0}
+          onClick={handleSendMessage}
+        >
+          📩 Отправить сообщение
+        </Button>
       </Box>
 
-      {/* Модальное окно подтверждения */}
+      {/* Поле для ввода сообщения */}
+      {selectedCandidates.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            variant="outlined"
+            placeholder="Введите сообщение..."
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+          />
+        </Box>
+      )}
+
+      {/* Модальное окно подтверждения отправки видеопрезентации */}
       <Dialog open={openConfirmation} onClose={handleCancelSend}>
         <DialogTitle>Подтверждение</DialogTitle>
         <DialogContent>
@@ -171,6 +234,24 @@ const CandidatesReadySoon = ({ filteredPeople, incassatorsData, employeeScores, 
             Отмена
           </Button>
           <Button onClick={handleConfirmSend} color="secondary" variant="contained">
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Модальное окно подтверждения отправки сообщения */}
+      <Dialog open={openMessageConfirmation} onClose={handleCancelMessageSend}>
+        <DialogTitle>Подтверждение</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Вы уверены, что хотите отправить сообщение выбранным кандидатам?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelMessageSend} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleConfirmMessageSend} color="primary" variant="contained">
             Подтвердить
           </Button>
         </DialogActions>
@@ -284,7 +365,7 @@ const CandidatesReadySoon = ({ filteredPeople, incassatorsData, employeeScores, 
                     </Box>
                   )}
                   {/* Блок с комментариями руководителя */}
-<ManagerComments userId={person.user_id} initialComment={person.managerComment} />
+                  <ManagerComments userId={person.user_id} initialComment={person.managerComment} />
                 </Paper>
               )}
             </AccordionDetails>
