@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField, // Добавляем TextField для ввода сообщения
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CandidateAdditionalInfo from './CandidateAdditionalInfo';
@@ -21,7 +22,9 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
   const [expanded, setExpanded] = useState(null);
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [videoStatusData, setVideoStatusData] = useState(videoPresentations || {});
-  const [openConfirmation, setOpenConfirmation] = useState(false); // Состояние для модального окна подтверждения
+  const [openConfirmation, setOpenConfirmation] = useState(false); // Для подтверждения видеопрезентации
+  const [openMessageConfirmation, setOpenMessageConfirmation] = useState(false); // Для подтверждения отправки сообщения
+  const [messageText, setMessageText] = useState(''); // Текст сообщения
 
   // Обработчик для открытия/закрытия аккордеона
   const handleChange = (panel) => (event, isExpanded) => {
@@ -106,20 +109,58 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
 
   // Обработчик для отправки запросов на видеопрезентацию
   const handleSendVideoRequests = () => {
-    setOpenConfirmation(true); // Открываем модальное окно подтверждения
+    setOpenConfirmation(true);
   };
 
   // Обработчик подтверждения отправки запросов
   const handleConfirmSend = () => {
-    selectedCandidates.forEach(requestVideoPresentation); // Отправляем запросы
-    setSelectedCandidates([]); // Сбрасываем выбранные чекбоксы
-    setOpenConfirmation(false); // Закрываем модальное окно
+    selectedCandidates.forEach(requestVideoPresentation);
+    setSelectedCandidates([]);
+    setOpenConfirmation(false);
   };
 
   // Обработчик отмены отправки запросов
   const handleCancelSend = () => {
-    setOpenConfirmation(false); // Закрываем модальное окно без отправки
+    setOpenConfirmation(false);
   };
+
+  // Обработчик для отправки сообщений
+  const handleSendMessage = () => {
+    setOpenMessageConfirmation(true);
+  };
+
+  // Обработчик подтверждения отправки сообщений
+  const handleConfirmMessageSend = () => {
+    selectedCandidates.forEach((userId) => sendMessageToUser(userId, messageText));
+    setSelectedCandidates([]);
+    setMessageText('');
+    setOpenMessageConfirmation(false);
+  };
+
+  // Обработчик отмены отправки сообщений
+  const handleCancelMessageSend = () => {
+    setOpenMessageConfirmation(false);
+  };
+
+  // Функция для отправки сообщения через Telegram
+  const sendMessageToUser = async (candidateId, message) => {
+    try {
+        const response = await fetch('http://195.133.38.138:5005/api/send-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidateId, message }), // Исправлено userId -> candidateId
+        });
+
+        if (response.ok) {
+            console.log(`✅ Сообщение отправлено пользователю с ID: ${candidateId}`);
+        } else {
+            console.error(`🔴 Ошибка при отправке сообщения пользователю с ID: ${candidateId}`);
+        }
+    } catch (error) {
+        console.error(`🔴 Ошибка при отправке сообщения пользователю с ID: ${candidateId}:`, error);
+    }
+};
+
 
   useEffect(() => {
     setVideoStatusData(videoPresentations || {});
@@ -150,19 +191,42 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
         ✅ Ready Now
       </Typography>
 
-      {/* Кнопка для запроса видеопрезентации */}
+      {/* Кнопка для запроса видеопрезентации и отправки сообщения */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <Button
           variant="contained"
           color="secondary"
           disabled={selectedCandidates.length === 0}
-          onClick={handleSendVideoRequests} // Используем новый обработчик
+          onClick={handleSendVideoRequests}
         >
           🎥 Запросить видеопрезентацию
         </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          disabled={selectedCandidates.length === 0}
+          onClick={handleSendMessage}
+        >
+          📩 Отправить сообщение
+        </Button>
       </Box>
 
-      {/* Модальное окно подтверждения */}
+      {/* Поле для ввода сообщения */}
+      {selectedCandidates.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            variant="outlined"
+            placeholder="Введите сообщение..."
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+          />
+        </Box>
+      )}
+
+      {/* Модальное окно подтверждения отправки видеопрезентации */}
       <Dialog open={openConfirmation} onClose={handleCancelSend}>
         <DialogTitle>Подтверждение</DialogTitle>
         <DialogContent>
@@ -180,6 +244,25 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
         </DialogActions>
       </Dialog>
 
+      {/* Модальное окно подтверждения отправки сообщения */}
+      <Dialog open={openMessageConfirmation} onClose={handleCancelMessageSend}>
+        <DialogTitle>Подтверждение</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Вы уверены, что хотите отправить сообщение выбранным кандидатам?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelMessageSend} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleConfirmMessageSend} color="primary" variant="contained">
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Остальной код компонента */}
       {filteredCandidates.map((person, idx) => {
         const incassatorInfo = findIncassatorInfo(person.full_name);
         const videoStatus = videoStatusData[person.user_id]?.status || "Запрос не отправлен";
@@ -197,7 +280,7 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
                 <Checkbox
                   checked={selectedCandidates.includes(person.user_id)}
                   onChange={() => handleCheckboxChange(person.user_id)}
-                  onClick={(e) => e.stopPropagation()} // Предотвращаем открытие/закрытие аккордеона при клике на чекбокс
+                  onClick={(e) => e.stopPropagation()}
                 />
                 {person.photo_url ? (
                   <img
@@ -231,7 +314,7 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
                   </Box>
                 )}
                 <Typography variant="h6">{person.full_name}</Typography>
-                <Box sx={{ flexGrow: 1 }} /> {/* Этот Box занимает все свободное пространство */}
+                <Box sx={{ flexGrow: 1 }} />
                 {videoStatus !== 'Запрос не отправлен' && (
                   <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
                     {videoStatus === 'Ожидание' && (
@@ -269,13 +352,11 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
                     </Box>
                   ))}
 
-                  {/* Вставляем CandidateAdditionalInfo перед блоком с видео */}
                   <CandidateAdditionalInfo
                     incassatorInfo={incassatorInfo}
                     candidateScores={employeeScores.find(score => score.fio === person.full_name)}
                   />
 
-                  {/* Блок с видео в самом конце */}
                   {videoStatus === 'Загружено' && videoUrl && (
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="h6" sx={{ mb: 1 }}>
@@ -287,8 +368,7 @@ const CandidatesReadyNow = ({ filteredPeople, incassatorsData, employeeScores, s
                       </video>
                     </Box>
                   )}
-                  {/* Блок с комментариями руководителя */}
-<ManagerComments userId={person.user_id} initialComment={person.managerComment} />
+                  <ManagerComments userId={person.user_id} initialComment={person.managerComment} />
                 </Paper>
               )}
             </AccordionDetails>

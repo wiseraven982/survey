@@ -33,11 +33,10 @@ export const createWebSocketConnection = (userId, onMessageCallback) => {
     return socket;
 };
 
-// Функция для отправки сообщения через Telegram API
 export const sendMessageThroughTelegram = async (candidateId, message) => {
     try {
         const response = await axios.post(`${API_BASE_URL}/send-message`, {
-            candidateId,
+            candidateId, // Исправлено с userId на candidateId
             message,
         });
         return response.data;
@@ -45,6 +44,12 @@ export const sendMessageThroughTelegram = async (candidateId, message) => {
         console.error("Ошибка при отправке сообщения через Telegram:", error);
         throw error;
     }
+};
+
+
+// Обертка для отправки сообщения (удобно использовать в компонентах)
+export const sendMessageToUser = async (userId, message) => {
+    return sendMessageThroughTelegram(userId, message);
 };
 
 // Функция для загрузки истории переписки
