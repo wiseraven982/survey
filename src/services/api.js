@@ -182,3 +182,22 @@ export const saveComment = async (userId, comment) => {
         throw error;
     }
 };
+
+export const sendMessageToGigaChat = async (text) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/gigachat`,
+        { message: text }, // Тело запроса
+        {
+          headers: {
+            "Content-Type": "application/json", // Убедитесь, что заголовок установлен
+          },
+        }
+      );
+  
+      return response.data?.reply ?? "Ответ не получен";
+    } catch (error) {
+      console.error("Ошибка при обращении к нашему бэкенду (gigachat):", error);
+      throw error;
+    }
+  };

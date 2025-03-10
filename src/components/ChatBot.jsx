@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button, Typography, Paper, Box, TextField } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import { sendMessageToGigaChat } from "../services/api";
 
 const ChatBot = () => {
   const [messages, setMessages] = useState([]);
@@ -8,57 +9,32 @@ const ChatBot = () => {
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
 
-  // Токен доступа к GigaChat API
-  const GIGACHAT_API_TOKEN = "ZTY2NmJhNzEtMjQ5Ny00YTI3LTk1NmUtYmQxYWY0MDE4MGUyOjI2Y2U2ZDMyLTI2MjgtNDQ5OC05YmY0LTQ2MmExOTkxZjc3Nw=="; // Замените на ваш токен
-
-  // Скроллим вниз при обновлении сообщений
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Функция отправки сообщения
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const newMessages = [...messages, { text: input, sender: "user" }];
-    setMessages(newMessages);
+    const userMessage = input.trim();
+    setMessages([...messages, { text: userMessage, sender: "user" }]);
     setLoading(true);
 
     try {
-      // Отправляем запрос к GigaChat API
-      const response = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GIGACHAT_API_TOKEN}`,
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: "user", content: input },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const botResponse = data.choices[0].message.content;
-      setMessages([...newMessages, { text: botResponse, sender: "bot" }]);
+      const botResponse = await sendMessageToGigaChat(userMessage);
+      setMessages((prev) => [...prev, { text: botResponse, sender: "bot" }]);
     } catch (error) {
-      console.error("Ошибка при запросе к GigaChat API:", error);
-      setMessages([
-        ...newMessages,
+      console.error("Ошибка:", error);
+      setMessages((prev) => [
+        ...prev,
         { text: `Ошибка: ${error.message}`, sender: "bot" },
       ]);
+    } finally {
+      setInput("");
+      setLoading(false);
     }
-
-    setInput("");
-    setLoading(false);
   };
 
-  // Отправка по Enter (без Shift)
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -77,7 +53,6 @@ const ChatBot = () => {
         height: "100%",
       }}
     >
-      {/* Заголовок "Gen-AI GigaChat" */}
       <Box
         sx={{
           textAlign: "center",
@@ -92,7 +67,6 @@ const ChatBot = () => {
         <Typography variant="h6">🤖 Gen-AI GigaChat</Typography>
       </Box>
 
-      {/* Контейнер с сообщениями */}
       <Box
         sx={{
           p: 2,
@@ -122,8 +96,7 @@ const ChatBot = () => {
               }}
             >
               <Typography variant="body2">
-                <strong>{msg.sender === "user" ? "Вы" : "Bot"}:</strong>{" "}
-                {msg.text}
+                <strong>{msg.sender === "user" ? "Вы" : "Bot"}:</strong> {msg.text}
               </Typography>
             </Box>
           </Box>
@@ -131,7 +104,6 @@ const ChatBot = () => {
         <div ref={chatEndRef} />
       </Box>
 
-      {/* Поле ввода и кнопка отправки */}
       <Box
         sx={{
           display: "flex",
