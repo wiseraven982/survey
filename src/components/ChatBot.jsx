@@ -15,11 +15,11 @@ const ChatBot = () => {
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
+  
     const userMessage = input.trim();
     setMessages([...messages, { text: userMessage, sender: "user" }]);
     setLoading(true);
-
+  
     try {
       const botResponse = await sendMessageToGigaChat(userMessage);
       setMessages((prev) => [...prev, { text: botResponse, sender: "bot" }]);

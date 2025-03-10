@@ -1,19 +1,10 @@
 import axios from "axios";
 
-/**
- * Вместо прямого обращения к GigaChat, мы шлём запрос
- * к нашему серверу (Node/Express), у которого есть
- * маршрут POST /api/gigachat
- * 
- * На бэкенде этот маршрут добавлен в server.js
- * и там хранится токен GigaChat.
- */
 export const sendMessageToGigaChat = async (userMessage) => {
   try {
-    // Шлём POST-запрос на наш БЭКЕНД
     const response = await axios.post(
-      "/api/gigachat",
-      { message: userMessage }, // Пакуем текст
+      "http://195.133.38.138:5005/api/gigachat", // Укажите полный URL
+      { message: userMessage },
       {
         headers: {
           "Content-Type": "application/json",
@@ -21,11 +12,16 @@ export const sendMessageToGigaChat = async (userMessage) => {
       }
     );
 
-    // На сервере мы отвечаем { reply: "Ответ бота" }
     const botReply = response.data?.reply ?? "Нет ответа";
     return botReply;
   } catch (error) {
     console.error("Ошибка при запросе к нашему бэкенду:", error);
-    throw error;
+    if (error.response) {
+      throw new Error(`Ошибка сервера: ${error.response.status} ${error.response.data}`);
+    } else if (error.request) {
+      throw new Error("Сервер недоступен. Проверьте подключение к интернету.");
+    } else {
+      throw new Error("Произошла ошибка при отправке запроса.");
+    }
   }
 };
