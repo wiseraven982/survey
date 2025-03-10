@@ -64,7 +64,7 @@ const ChatBot = () => {
           boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
         }}
       >
-        <Typography variant="h6">🤖 Gen-AI GigaChat</Typography>
+        <Typography variant="h6">🤖 GigaChat</Typography>
       </Box>
 
       <Box
